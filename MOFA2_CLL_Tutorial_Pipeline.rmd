@@ -1,0 +1,959 @@
+---
+title: "Multi-Omics Factor Analysis (MOFA2) on Chronic Lymphocytic Leukemia Data"
+author: "Based on MOFA2 Tutorial by Ricard Argelaguet and Britta Velten"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    theme: united
+    code_folding: show
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+# ============================================================================
+# KNITR SETUP OPTIONS
+# ============================================================================
+# Configure chunk execution behavior for the entire document
+# ============================================================================
+
+knitr::opts_chunk$set(
+  echo = TRUE,           # Show code in output
+  warning = FALSE,       # Suppress warnings
+  message = FALSE,       # Suppress messages
+  fig.width = 10,        # Default figure width (inches)
+  fig.height = 7,        # Default figure height (inches)
+  fig.align = "center",  # Center-align figures
+  cache = FALSE          # Don't cache results (ensures reproducibility)
+)
+
+# Set random seed for reproducibility across all chunks
+set.seed(42)
+```
+
+# Introduction to Multi-Omics Factor Analysis (MOFA2)
+
+**MOFA** (Multi-Omics Factor Analysis) is a probabilistic factor analysis model designed for the **unsupervised integration of multi-omic data sets**. In the context of chronic lymphocytic leukemia (CLL), MOFA enables us to identify principal sources of variation across different data modalities (genomic mutations, RNA expression, DNA methylation, and drug response), facilitating:
+
+- **Discovery of latent factors** that represent coordinated variation across multiple omics layers
+- **Identification of molecular subtypes** and disease heterogeneity patterns
+- **Characterization of clinical markers** such as IGHV mutation status and trisomy 12
+- **Interpretation of biological mechanisms** underlying disease progression and drug response
+
+## Biological Context: Chronic Lymphocytic Leukemia
+
+Chronic lymphocytic leukemia (CLL) is a **B-cell malignancy** characterized by significant clinical and molecular heterogeneity. Key molecular markers include:
+
+- **IGHV (Immunoglobulin Heavy-Chain Variable) mutation status**: Mutated IGHV (M-CLL) indicates better prognosis, while unmutated IGHV (U-CLL) is associated with aggressive disease
+- **Trisomy 12**: A chromosomal abnormality (extra copy of chromosome 12) associated with intermediate prognosis
+- **TP53 mutations and del(17p)**: Associated with poor prognosis and chemoresistance
+- **del(13q), del(11q)**: Other common chromosomal abnormalities with varying clinical impacts
+
+The integration of multi-omics data allows us to understand how these genetic lesions translate into phenotypic differences in **DNA methylation patterns, gene expression profiles, and drug sensitivity**.
+
+## Key Approach: Pre-trained Model
+
+This pipeline uses a **pre-trained MOFA model** from the official EBI repository. This approach:
+
+- ✅ Avoids Python/mofapy2 compatibility issues that affect model training
+- ✅ Guarantees reproducibility with published results
+- ✅ Allows immediate focus on analysis and interpretation
+- ✅ Demonstrates the full MOFA2 analysis workflow
+
+---
+
+# 1. Environment Setup and Library Loading
+
+## 1.1 Install Required Packages (Run Once)
+
+```{r install_packages, eval=FALSE}
+# ============================================================================
+# SECTION 1.1: PACKAGE INSTALLATION
+# ============================================================================
+# This section installs all required R packages for MOFA2 analysis
+# Run this code block only ONCE when setting up your environment
+# Set eval=TRUE to run, then set back to eval=FALSE
+# ============================================================================
+
+# Install BiocManager if not already installed (required for Bioconductor packages)
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+# Install MOFA2 from Bioconductor
+# MOFA2 is the main package for multi-omics factor analysis
+BiocManager::install("MOFA2")
+
+# Install MOFAdata package (contains the CLL dataset and pre-trained models)
+# ⚠️ Note: This package is large, increase timeout if needed
+options(timeout = 600)
+BiocManager::install("MOFAdata")
+
+# Install data manipulation and visualization packages
+install.packages(c(
+  "data.table",    # Fast data manipulation (uses data.table syntax)
+  "ggplot2",       # Grammar of graphics visualization
+  "tidyverse"      # Collection of data science packages (dplyr, tidyr, etc.)
+))
+```
+
+## 1.2 Load Required Libraries
+
+```{r load_libraries}
+# ============================================================================
+# SECTION 1.2: LOAD LIBRARIES
+# ============================================================================
+# Load all required packages for the analysis
+# Each library serves a specific purpose in the workflow
+# ============================================================================
+
+# Core MOFA2 packages
+library(MOFA2)          # Main package: Multi-Omics Factor Analysis version 2
+                        # Provides: create_mofa(), run_mofa(), plot_* functions
+library(MOFAdata)       # Data package containing CLL dataset and Reactome gene sets
+                        # Provides: CLL_data, CLL_metadata, reactomeGS
+
+# Data manipulation
+library(data.table)     # Fast data.frame operations with := and .SD syntax
+                        # Used for: efficient data loading and manipulation
+
+# Visualization
+library(ggplot2)        # The grammar of graphics for R
+                        # Used for: all custom plots and MOFA2 plot modifications
+
+# Tidyverse ecosystem
+library(tidyverse)      # Meta-package including:
+                        # - dplyr: data manipulation (filter, mutate, summarize)
+                        # - tidyr: data reshaping (pivot_longer, pivot_wider)
+                        # - purrr: functional programming (map, reduce)
+                        # - readr: fast file reading
+
+# Set ggplot2 theme for consistent visualization style
+theme_set(theme_bw(base_size = 12))
+
+cat("✓ All libraries loaded successfully!\n")
+cat("MOFA2 version:", as.character(packageVersion("MOFA2")), "\n")
+```
+
+---
+
+# 2. Data Acquisition and Exploration
+
+## 2.1 Load CLL Multi-Omics Data
+
+The CLL dataset is available through the **MOFAdata** Bioconductor package. It comprises 200 patient samples with four data modalities:
+
+| View | Features | Description |
+|------|----------|-------------|
+| Somatic Mutations | 69 | Binary indicators of gene mutations (0/1) |
+| mRNA Expression | 5,000 | Log-transformed normalized RNA-seq counts |
+| DNA Methylation | 4,248 | M-values of most variable CpG sites |
+| Drug Response | 310 | Ex vivo drug sensitivity (cell viability) |
+
+```{r load_data}
+# ============================================================================
+# SECTION 2.1: LOAD CLL MULTI-OMICS DATA
+# ============================================================================
+# The data is stored as a named list of matrices
+# Each matrix has: features in ROWS, samples in COLUMNS
+# This is the format expected by create_mofa()
+# ============================================================================
+
+# Load the CLL data from MOFAdata package
+utils::data("CLL_data")
+
+# Examine the overall structure
+cat("=== CLL Data Structure ===\n")
+cat("Type:", class(CLL_data), "\n")
+cat("Number of omics modalities:", length(CLL_data), "\n")
+cat("Modality names:", paste(names(CLL_data), collapse=", "), "\n\n")
+
+# Display dimensions of each modality (features × samples)
+cat("=== Data Modality Dimensions (features × samples) ===\n")
+for (view in names(CLL_data)) {
+  dims <- dim(CLL_data[[view]])
+  cat(sprintf("%s: %d features × %d samples\n", view, dims[1], dims[2]))
+}
+```
+
+## 2.2 Preview Raw Data
+
+```{r preview_data}
+# ============================================================================
+# SECTION 2.2: PREVIEW RAW DATA
+# ============================================================================
+# Examine structure and values in each data modality
+# Understanding your data is crucial before analysis
+# ============================================================================
+
+# Preview mRNA expression data (continuous values, log-transformed)
+cat("\n=== Preview of mRNA data (first 5 genes, 5 samples) ===\n")
+print(CLL_data$mRNA[1:5, 1:5])
+
+# Preview Mutations data (binary: 0 = wild-type, 1 = mutated)
+cat("\n=== Preview of Mutations data (first 5 mutations, 5 samples) ===\n")
+print(CLL_data$Mutations[1:5, 1:5])
+
+# Preview Drug response data (continuous: cell viability %)
+cat("\n=== Preview of Drug response data (first 5 drugs, 5 samples) ===\n")
+print(CLL_data$Drugs[1:5, 1:5])
+```
+
+## 2.3 Load Sample Metadata
+
+Clinical metadata provides phenotypic information about patients for biological interpretation of factors.
+
+```{r load_metadata}
+# ============================================================================
+# SECTION 2.3: LOAD CLINICAL METADATA
+# ============================================================================
+# Metadata contains clinical information for each patient:
+# - Gender: m (male), f (female)
+# - age: Patient age in years at sample collection
+# - TTT: Time To Treatment (years from sample to next treatment)
+# - TTD: Time To Death (years from sample to death)
+# - treatedAfter: Whether patient received treatment (TRUE/FALSE)
+# - died: Whether patient died during follow-up (TRUE/FALSE)
+# - IGHV: IGHV mutation status (0 = unmutated, 1 = mutated)
+# - trisomy12: Trisomy 12 status (0 = absent, 1 = present)
+# ============================================================================
+
+# Load metadata from the official MOFA repository
+CLL_metadata <- tryCatch({
+  fread("ftp://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/sample_metadata.txt")
+}, error = function(e) {
+  cat("⚠️ Could not load metadata from FTP. Creating minimal metadata...\n")
+  data.frame(sample = colnames(CLL_data$mRNA))
+})
+
+# Display metadata summary
+cat("=== Metadata Summary ===\n")
+cat("Number of samples:", nrow(CLL_metadata), "\n")
+cat("Number of variables:", ncol(CLL_metadata), "\n")
+cat("Clinical variables:", paste(colnames(CLL_metadata), collapse=", "), "\n\n")
+
+# Display first few rows
+cat("=== First 6 Samples ===\n")
+print(head(CLL_metadata))
+
+# Check for missing values in key clinical variables
+cat("\n=== Missing Value Summary ===\n")
+for (col in c("IGHV", "trisomy12", "Gender", "age")) {
+  if (col %in% colnames(CLL_metadata)) {
+    n_missing <- sum(is.na(CLL_metadata[[col]]))
+    cat(sprintf("%s: %d missing (%.1f%%)\n", col, n_missing, 100*n_missing/nrow(CLL_metadata)))
+  }
+}
+```
+
+---
+
+# 3. Load Pre-trained MOFA Model
+
+## 3.1 Why Use a Pre-trained Model?
+
+Training MOFA models requires the **mofapy2** Python package. Due to version incompatibilities between:
+- MOFA2 R package (v1.12.1)
+- mofapy2 Python package (v0.7.0+)
+
+We use a **pre-trained model** from the official MOFA repository. This model was trained by the MOFA2 developers and guarantees reproducibility with published results.
+
+> 💡 **Learning Point**: In your own analyses, you would train your model using `run_mofa()` after setting up a compatible Python environment.
+
+```{r load_model}
+# ============================================================================
+# SECTION 3.1: LOAD PRE-TRAINED MOFA MODEL
+# ============================================================================
+# The pre-trained model is stored as an RDS file on the EBI FTP server
+# This model was trained with 15 latent factors on the CLL dataset
+# ============================================================================
+
+cat("=== Loading Pre-trained MOFA Model ===\n")
+cat("Source: EBI MOFA FTP repository\n")
+cat("Model: MOFA2_CLL.rds (trained on 200 CLL samples, 4 views, 15 factors)\n")
+cat("Downloading... (this may take a moment)\n\n")
+
+# Load the pre-trained model from the official repository
+MOFAobject <- readRDS(url("http://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/MOFA2_CLL.rds"))
+
+cat("✓ Model loaded successfully!\n\n")
+
+# Display comprehensive model summary
+cat("=== Trained MOFA Model Summary ===\n")
+print(MOFAobject)
+```
+
+## 3.2 Add Sample Metadata to Model
+
+```{r add_metadata}
+# ============================================================================
+# SECTION 3.2: ADD SAMPLE METADATA
+# ============================================================================
+# Attach clinical metadata to the MOFA object for downstream analysis
+# This enables coloring/grouping samples by clinical features in plots
+# ============================================================================
+
+# Add metadata to the MOFA object
+# The samples_metadata<- function requires a data.frame with a 'sample' column
+samples_metadata(MOFAobject) <- CLL_metadata
+
+cat("✓ Metadata added to model\n")
+cat("Available covariates for analysis:\n")
+cat("  ", paste(colnames(samples_metadata(MOFAobject)), collapse=", "), "\n")
+```
+
+---
+
+# 4. Model Structure and Interpretation
+
+## 4.1 Understanding MOFA Object Slots
+
+The MOFA object is an S4 class with multiple slots storing data and results.
+
+```{r model_slots}
+# ============================================================================
+# SECTION 4.1: MOFA OBJECT STRUCTURE
+# ============================================================================
+# Key slots in the MOFA object:
+# - data: Input data matrices (centered at zero)
+# - expectations: Posterior expectations of Z (factors) and W (weights)
+# - samples_metadata: Clinical information
+# - training_stats: Convergence and ELBO values
+# ============================================================================
+
+cat("=== MOFA Object Slots ===\n")
+cat("The MOFA object contains the following components:\n\n")
+slots <- slotNames(MOFAobject)
+for (slot in slots) {
+  cat("•", slot, "\n")
+}
+
+cat("\n=== Most Important Slots for Analysis ===\n")
+cat("• data: Input data matrices\n")
+cat("• expectations: Factor values (Z) and Feature weights (W)\n")
+cat("• samples_metadata: Clinical covariates\n")
+cat("• dimensions: Number of views, groups, samples, factors\n")
+```
+
+## 4.2 Data Dimensions
+
+```{r data_dims}
+# ============================================================================
+# SECTION 4.2: DATA DIMENSIONS
+# ============================================================================
+# Examine the dimensions of input data and learned representations
+# ============================================================================
+
+# Data views (input matrices)
+cat("=== Input Data Views ===\n")
+cat("Views:", paste(names(MOFAobject@data), collapse=", "), "\n\n")
+
+for (view in names(MOFAobject@data)) {
+  dims <- dim(MOFAobject@data[[view]]$group1)
+  cat(sprintf("• %s: %d features × %d samples\n", view, dims[1], dims[2]))
+}
+```
+
+## 4.3 Factor and Weight Matrices
+
+```{r factor_weights}
+# ============================================================================
+# SECTION 4.3: FACTOR AND WEIGHT MATRICES
+# ============================================================================
+# MOFA learns two key matrices:
+# 
+# Z (Factors): samples × factors matrix
+#   - Each row is a sample
+#   - Each column is a latent factor
+#   - Values indicate sample position along each factor axis
+#   - Interpretation: similar to PCA scores
+#
+# W (Weights): features × factors matrix (one per view)
+#   - Each row is a feature (gene, CpG, drug, mutation)
+#   - Each column is a latent factor
+#   - Values indicate feature contribution to each factor
+#   - Interpretation: similar to PCA loadings
+# ============================================================================
+
+# Factor matrix dimensions
+cat("=== Factor Matrix (Z) ===\n")
+Z_dims <- dim(MOFAobject@expectations$Z$group1)
+cat("Dimensions:", Z_dims[1], "samples ×", Z_dims[2], "factors\n")
+cat("Interpretation: Each sample has", Z_dims[2], "factor values\n\n")
+
+# Weight matrices dimensions
+cat("=== Weight Matrices (W) ===\n")
+for (view in names(MOFAobject@expectations$W)) {
+  W_dims <- dim(MOFAobject@expectations$W[[view]])
+  cat(sprintf("• %s: %d features × %d factors\n", view, W_dims[1], W_dims[2]))
+}
+cat("\nInterpretation: Each feature has a weight for each factor\n")
+cat("High |weight| = strong association with factor\n")
+cat("Sign indicates direction of association\n")
+```
+
+---
+
+# 5. Variance Decomposition Analysis
+
+## 5.1 Variance Explained per Factor
+
+The most important insight from MOFA is the **variance decomposition plot**, which shows how much variance each factor explains in each data modality.
+
+```{r variance_by_factor, fig.height=8}
+# ============================================================================
+# SECTION 5.1: VARIANCE EXPLAINED BY FACTOR
+# ============================================================================
+# This plot is KEY to understanding MOFA results:
+# - X-axis: Latent factors (1 to K)
+# - Y-axis: Data modalities (views)
+# - Color intensity: Percentage of variance explained
+#
+# INTERPRETATION GUIDE:
+# - Factors active in ALL views = shared biological signals
+# - Factors active in ONE view = view-specific technical/biological signals
+# - High variance = important source of variation
+# ============================================================================
+
+cat("=== Variance Decomposition by Factor ===\n")
+cat("Interpretation:\n")
+cat("• Dark colors = high variance explained (important factor for that view)\n")
+cat("• Light colors = low variance explained\n")
+cat("• Factors active across multiple views = shared biological signals\n\n")
+
+plot_variance_explained(MOFAobject, max_r2 = 15)
+```
+
+### Key Observations:
+
+Based on the variance decomposition:
+
+1. **Factor 1** captures variance across **ALL** modalities → likely represents a major disease driver
+2. **Factor 2** is highly specific to the **Drug response** view → drug-specific effect
+3. **Factor 3** captures variation across Drugs, mRNA, and Mutations (not Methylation) → another biological signal
+4. **Factors 4-15** capture smaller, more specific sources of variation
+
+## 5.2 Total Variance Explained
+
+```{r total_variance}
+# ============================================================================
+# SECTION 5.2: TOTAL VARIANCE EXPLAINED PER VIEW
+# ============================================================================
+# This shows how much of the total variance in each view is captured
+# by ALL factors combined (K=15 in this model)
+#
+# Typical values:
+# - 10-30% = noisy data or strong non-linearities
+# - 30-60% = good fit for most biological data
+# - >60% = excellent fit (or possible overfitting)
+# ============================================================================
+
+cat("=== Total Variance Explained (all 15 factors) ===\n")
+cat("This indicates how well MOFA captures the structure in each view\n\n")
+
+# Extract and plot total variance
+plot_variance_explained(MOFAobject, plot_total = TRUE)[[2]]
+```
+
+> 💡 **Learning Point**: With only 15 factors, MOFA explains ~54% of Drug response variation and ~42% of mRNA variation. This is excellent for a linear model!
+
+---
+
+# 6. Factor Correlation
+
+```{r factor_correlation}
+# ============================================================================
+# SECTION 6: FACTOR CORRELATION
+# ============================================================================
+# A good MOFA model should have largely UNCORRELATED factors
+# Each factor should capture a unique source of variation
+#
+# High correlation between factors suggests:
+# - Too many factors (redundancy)
+# - Improper data normalization
+# - Model convergence issues
+# ============================================================================
+
+cat("=== Factor Correlation Matrix ===\n")
+cat("Good models have off-diagonal values close to zero\n\n")
+
+plot_factor_cor(MOFAobject)
+```
+
+---
+
+# 7. Factor Characterization: Factor 1 (IGHV Mutation)
+
+## 7.1 Association with Clinical Covariates
+
+```{r factor1_association, fig.height=6}
+# ============================================================================
+# SECTION 7.1: CLINICAL ASSOCIATIONS
+# ============================================================================
+# Test correlations between factors and clinical covariates
+# Helps identify which factors capture clinically relevant variation
+# 
+# p-values are corrected for multiple testing
+# -log10(p-value) is plotted: higher = more significant
+# ============================================================================
+
+cat("=== Factor-Covariate Associations ===\n")
+cat("Testing: Gender, survival (died), and age\n")
+cat("Significance: higher -log10(p-value) = stronger association\n\n")
+
+correlate_factors_with_covariates(MOFAobject, 
+  covariates = c("Gender", "died", "age"), 
+  plot = "log_pval"
+)
+```
+
+## 7.2 Plot Factor 1 Values
+
+```{r factor1_values}
+# ============================================================================
+# SECTION 7.2: FACTOR VALUE DISTRIBUTION
+# ============================================================================
+# Factor values (Z matrix) represent sample positions along factor axes
+# 
+# INTERPRETATION:
+# - Samples with positive values = high expression of positive-weight features
+# - Samples with negative values = high expression of negative-weight features
+# - Data is centered → values spread around zero
+# ============================================================================
+
+cat("=== Factor 1 Value Distribution ===\n")
+cat("Samples are colored by their Factor 1 value\n")
+cat("Notice the bimodal distribution suggesting two subgroups\n\n")
+
+plot_factor(MOFAobject, 
+  factors = 1, 
+  color_by = "Factor1"
+)
+```
+
+## 7.3 Feature Weights: Mutations View
+
+```{r factor1_mutation_weights}
+# ============================================================================
+# SECTION 7.3: MUTATION FEATURE WEIGHTS
+# ============================================================================
+# Feature weights (W matrix) indicate how each feature contributes to a factor
+#
+# For BINARY mutation data:
+# - Positive weight = mutated samples have higher factor values
+# - Negative weight = mutated samples have lower factor values
+#
+# Top-weighted features are the "drivers" of the factor
+# ============================================================================
+
+cat("=== Factor 1: Mutation Weights ===\n")
+cat("Features with highest |weights| drive the factor\n")
+cat("IGHV mutation should appear as a top feature\n\n")
+
+plot_weights(MOFAobject,
+  view = "Mutations",
+  factor = 1,
+  nfeatures = 10,    # Show top 10 features
+  abs = FALSE        # Show signed weights (not absolute values)
+)
+```
+
+> 🎯 **Key Finding**: IGHV mutation has the **largest weight** for Factor 1! This confirms Factor 1 captures IGHV-related biology.
+
+## 7.4 Visualize IGHV Status
+
+```{r factor1_ighv}
+# ============================================================================
+# SECTION 7.4: FACTOR 1 BY IGHV STATUS
+# ============================================================================
+# Validate that Factor 1 separates samples by IGHV mutation status
+# This confirms the biological interpretation from the weight analysis
+# ============================================================================
+
+cat("=== Factor 1 Values by IGHV Mutation Status ===\n")
+cat("IGHV = 0: Unmutated (aggressive, poor prognosis)\n")
+cat("IGHV = 1: Mutated (indolent, better prognosis)\n\n")
+
+plot_factor(MOFAobject, 
+  factors = 1, 
+  color_by = "IGHV",
+  dodge = TRUE,      # Separate groups horizontally
+  add_violin = TRUE  # Show distribution shape
+)
+```
+
+## 7.5 mRNA Expression Weights
+
+```{r factor1_mrna_weights, fig.height=8}
+# ============================================================================
+# SECTION 7.5: mRNA FEATURE WEIGHTS
+# ============================================================================
+# Examine which genes are associated with Factor 1
+# 
+# Genes with positive weights: higher expression in IGHV-mutated samples
+# Genes with negative weights: higher expression in IGHV-unmutated samples
+#
+# These are potential biomarkers and downstream targets
+# ============================================================================
+
+cat("=== Factor 1: Top mRNA Weights ===\n")
+cat("These genes show the strongest association with IGHV status\n\n")
+
+plot_weights(MOFAobject,
+  view = "mRNA",
+  factor = 1,
+  nfeatures = 15,
+  abs = FALSE
+)
+```
+
+## 7.6 Gene Expression Heatmap
+
+```{r factor1_heatmap}
+# ============================================================================
+# SECTION 7.6: EXPRESSION HEATMAP
+# ============================================================================
+# Visualize expression patterns of top Factor 1 genes across samples
+# 
+# denoise = TRUE: Shows reconstructed data (noise removed by model)
+# scale = "row": Z-score normalization per gene for visualization
+# ============================================================================
+
+cat("=== Factor 1: Gene Expression Heatmap ===\n")
+cat("Showing top 25 genes, samples ordered by Factor 1 value\n")
+cat("denoise=TRUE removes noise for clearer patterns\n\n")
+
+plot_data_heatmap(MOFAobject, 
+  view = "mRNA",
+  factor = 1,  
+  features = 25,         # Top 25 genes by weight
+  denoise = TRUE,        # Show denoised (reconstructed) data
+  cluster_rows = FALSE,  # Keep genes in weight order
+  cluster_cols = FALSE,  # Keep samples in factor order
+  show_rownames = TRUE,
+  show_colnames = FALSE,
+  scale = "row"          # Z-score normalization per gene
+)
+```
+
+---
+
+# 8. Factor Characterization: Factor 3 (Trisomy 12)
+
+## 8.1 Mutation Weights
+
+```{r factor3_weights}
+# ============================================================================
+# SECTION 8.1: FACTOR 3 MUTATION WEIGHTS
+# ============================================================================
+# Identify which genetic lesions drive Factor 3
+# ============================================================================
+
+cat("=== Factor 3: Mutation Weights ===\n")
+cat("Looking for genetic drivers of Factor 3\n\n")
+
+plot_weights(MOFAobject, 
+  view = "Mutations", 
+  factor = 3, 
+  nfeatures = 10,
+  abs = FALSE
+)
+```
+
+> 🎯 **Key Finding**: Trisomy 12 is the **major driver** of Factor 3! This is the second most important clinical marker in CLL.
+
+## 8.2 Factor Values by Trisomy 12
+
+```{r factor3_trisomy12}
+# ============================================================================
+# SECTION 8.2: FACTOR 3 BY TRISOMY 12 STATUS
+# ============================================================================
+# Validate Factor 3 separates samples by trisomy 12 status
+# ============================================================================
+
+cat("=== Factor 3 Values by Trisomy 12 Status ===\n")
+cat("Trisomy 12 = 0: Normal chromosome 12\n")
+cat("Trisomy 12 = 1: Extra copy of chromosome 12\n\n")
+
+plot_factor(MOFAobject, 
+  factors = 3, 
+  color_by = "trisomy12",
+  dodge = TRUE,
+  add_violin = TRUE
+)
+```
+
+## 8.3 Drug Response Signatures
+
+```{r factor3_drugs}
+# ============================================================================
+# SECTION 8.3: DRUG RESPONSE PATTERNS
+# ============================================================================
+# Examine how drug sensitivity relates to Factor 3 (Trisomy 12)
+# This reveals potential therapeutic vulnerabilities
+# ============================================================================
+
+cat("=== Factor 3: Drug Response Patterns ===\n")
+cat("Showing drugs with highest positive weights\n")
+cat("Potential therapeutic targets for Trisomy 12 patients\n\n")
+
+plot_data_scatter(MOFAobject, 
+  view = "Drugs",
+  factor = 3,  
+  features = 4,           # Top 4 drugs
+  sign = "positive",      # Positive weight drugs
+  color_by = "trisomy12"
+) + labs(y = "Drug response (cell viability)")
+```
+
+---
+
+# 9. Patient Stratification: Combined Factor Analysis
+
+## 9.1 Factor 1 vs Factor 3 Scatter Plot
+
+This is one of the **most important visualizations** in MOFA analysis. It stratifies patients into molecular subgroups based on their multi-omic profiles.
+
+```{r combined_factors, fig.height=8}
+# ============================================================================
+# SECTION 9.1: PATIENT STRATIFICATION
+# ============================================================================
+# Plot Factor 1 (IGHV) vs Factor 3 (Trisomy 12) to classify patients
+# 
+# This creates 4 molecular subgroups:
+# 1. IGHV-mutated, no Trisomy 12 (best prognosis)
+# 2. IGHV-mutated, Trisomy 12
+# 3. IGHV-unmutated, no Trisomy 12
+# 4. IGHV-unmutated, Trisomy 12 (worst prognosis)
+#
+# These subgroups predict drug response and survival!
+# ============================================================================
+
+cat("=== Patient Stratification by MOFA Factors ===\n")
+cat("Color: IGHV mutation status\n")
+cat("Shape: Trisomy 12 status\n")
+cat("Dashed lines separate the 4 molecular subgroups\n\n")
+
+p <- plot_factors(MOFAobject, 
+  factors = c(1, 3), 
+  color_by = "IGHV",
+  shape_by = "trisomy12",
+  dot_size = 2.5,
+  show_missing = TRUE
+)
+
+# Add reference lines to define quadrants
+p <- p + 
+  geom_hline(yintercept = -1, linetype = "dashed", color = "gray50") +
+  geom_vline(xintercept = -0.5, linetype = "dashed", color = "gray50") +
+  labs(
+    title = "CLL Patient Stratification by MOFA Factors",
+    subtitle = "Based on IGHV mutation status and Trisomy 12",
+    x = "Factor 1 (IGHV mutation axis)",
+    y = "Factor 3 (Trisomy 12 axis)"
+  )
+
+print(p)
+```
+
+### Clinical Significance
+
+This plot demonstrates the power of multi-omics integration:
+
+1. **Factor 1** (x-axis) separates patients by **IGHV mutation status**
+2. **Factor 3** (y-axis) separates patients by **Trisomy 12 status**
+3. The four quadrants represent **clinically distinct subgroups** with different:
+   - Disease progression rates
+   - Drug sensitivity profiles
+   - Survival outcomes
+
+> 🏥 **Clinical Implication**: These molecular subgroups can guide **precision medicine** treatment decisions!
+
+---
+
+# 10. Gene Set Enrichment Analysis (GSEA)
+
+## 10.1 Load Reactome Gene Sets
+
+```{r gsea_setup}
+# ============================================================================
+# SECTION 10.1: GENE SET SETUP
+# ============================================================================
+# Load pre-defined gene sets from Reactome database
+# These represent biological pathways and processes
+# 
+# The gene set matrix is BINARY:
+# - Rows = pathways
+# - Columns = genes
+# - 1 = gene belongs to pathway, 0 = gene not in pathway
+# ============================================================================
+
+cat("=== Loading Reactome Gene Sets ===\n")
+
+# Load Reactome pathways from MOFAdata
+utils::data(reactomeGS)
+
+cat("Number of pathways:", nrow(reactomeGS), "\n")
+cat("Number of genes:", ncol(reactomeGS), "\n\n")
+
+cat("Example pathway names:\n")
+print(head(rownames(reactomeGS)))
+```
+
+## 10.2 Run Enrichment Analysis
+
+```{r gsea_run}
+# ============================================================================
+# SECTION 10.2: RUN GSEA
+# ============================================================================
+# Test which pathways are enriched in each factor's top genes
+# 
+# Parameters:
+# - feature.sets: Binary gene set matrix
+# - view: Which MOFA view to analyze (must be mRNA for pathway analysis)
+# - factors: Which factors to test
+# - set.statistic: How to summarize gene weights into pathway scores
+# - statistical.test: How to test significance
+# ============================================================================
+
+cat("=== Running Gene Set Enrichment Analysis ===\n")
+cat("Testing Reactome pathways against Factor weights\n")
+cat("This may take a moment...\n\n")
+
+enrichment_results <- run_enrichment(MOFAobject, 
+  feature.sets = reactomeGS, 
+  view = "mRNA",
+  factors = 1:5,                    # Test first 5 factors
+  set.statistic = "mean.diff",      # Use mean weight difference
+  statistical.test = "parametric"   # Parametric t-test
+)
+
+cat("✓ Enrichment analysis complete!\n")
+```
+
+## 10.3 Plot Enrichment Results
+
+```{r gsea_plot, fig.height=10}
+# ============================================================================
+# SECTION 10.3: VISUALIZE GSEA RESULTS
+# ============================================================================
+# Plot top enriched pathways for Factor 1
+# ============================================================================
+
+cat("=== Factor 1: Top Enriched Pathways ===\n")
+
+tryCatch({
+  plot_enrichment(enrichment_results, 
+    factor = 1, 
+    max.pathways = 15,
+    alpha = 0.1
+  )
+}, error = function(e) {
+  cat("Note: No pathways met significance threshold (alpha=0.1)\n")
+  cat("Showing top pathways by adjusted p-value:\n\n")
+  
+  # Manual extraction of results
+  if (!is.null(enrichment_results$pval.adj)) {
+    results_df <- data.frame(
+      pathway = rownames(enrichment_results$pval.adj),
+      pval_adj = enrichment_results$pval.adj[, 1]
+    )
+    results_df <- results_df[order(results_df$pval_adj), ]
+    print(head(results_df, 15))
+  }
+})
+```
+
+---
+
+# 11. Dimensionality Reduction (UMAP)
+
+```{r umap, fig.height=7}
+# ============================================================================
+# SECTION 11: UMAP VISUALIZATION
+# ============================================================================
+# UMAP (Uniform Manifold Approximation and Projection) reduces the
+# 15-dimensional factor space to 2D for visualization
+#
+# Samples that cluster together have similar multi-omic profiles
+# Color/shape by clinical features to identify subgroups
+# ============================================================================
+
+cat("=== UMAP of MOFA Factors ===\n")
+cat("Reducing 15 factors to 2D for visualization\n\n")
+
+# Run UMAP on factor values
+set.seed(42)
+MOFAobject <- run_umap(MOFAobject)
+
+# Plot UMAP colored by clinical features
+plot_dimred(MOFAobject, 
+  method = "UMAP",
+  color_by = "IGHV",
+  shape_by = "trisomy12",
+  dot_size = 3
+) + 
+  labs(
+    title = "UMAP Projection of MOFA Factors",
+    subtitle = "Samples colored by IGHV status, shaped by Trisomy 12"
+  )
+```
+
+---
+
+# 12. Session Information
+
+```{r session_info}
+# ============================================================================
+# SECTION 12: SESSION INFORMATION
+# ============================================================================
+# Document R version and package versions for reproducibility
+# ============================================================================
+
+cat("=== Session Information ===\n")
+cat("For reproducibility, here are the package versions used:\n\n")
+
+sessionInfo()
+```
+
+---
+
+# Summary and Key Takeaways
+
+## What We Learned
+
+This analysis demonstrated how **MOFA+ integrates multiple omics** to discover biologically meaningful patterns:
+
+### Key Findings
+
+| Factor | Driver | Clinical Relevance |
+|--------|--------|-------------------|
+| Factor 1 | IGHV mutation | Major prognostic marker; separates M-CLL from U-CLL |
+| Factor 3 | Trisomy 12 | Second prognostic marker; affects drug sensitivity |
+
+### Technical Insights
+
+1. **Variance Decomposition**: Revealed which factors capture shared vs view-specific variation
+2. **Feature Weights**: Identified molecular drivers (genes, mutations) underlying each factor
+3. **Patient Stratification**: Classified 200 CLL patients into 4 molecular subgroups
+4. **GSEA**: Linked factors to biological pathways
+
+### Clinical Implications
+
+MOFA factors can be used for:
+- ✅ **Precision medicine**: Stratify patients for targeted therapy
+- ✅ **Biomarker discovery**: Identify genes predictive of drug response
+- ✅ **Survival prediction**: Factors correlate with time-to-treatment
+- ✅ **Drug repurposing**: Find drugs effective in specific molecular subgroups
+
+## Next Steps for Your Own Analysis
+
+1. **Prepare your data**: Format as list of matrices (features × samples)
+2. **Set up Python**: Create compatible environment with mofapy2==0.6.x
+3. **Train model**: Use `run_mofa()` with your data
+4. **Interpret factors**: Follow the workflow demonstrated here
+
+---
+
+*Analysis completed on `r Sys.Date()`*

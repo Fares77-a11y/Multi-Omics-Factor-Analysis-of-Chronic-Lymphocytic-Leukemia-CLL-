@@ -1,0 +1,51 @@
+# R and RStudio files
+.Rhistory
+.RData
+.Rproj.user
+*.Rproj
+
+# R Markdown outputs
+*.html
+*.pdf
+*_cache/
+*_files/
+
+# Data files (optional - uncomment if you don't want to track data)
+# data/
+# models/*.hdf5
+
+# Large result files
+results/*.rds
+results/*.RData
+
+# Python files (for MOFA2 backend)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+*.egg-info/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+._.DS_Store
+*~
+
+# IDE files
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Log files
+*.log
+
+# Large plot files (optional)
+# plots/*.png
+# plots/*.pdf
