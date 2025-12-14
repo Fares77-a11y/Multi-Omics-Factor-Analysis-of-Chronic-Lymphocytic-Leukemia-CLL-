@@ -5,7 +5,7 @@
 [![MOFA2](https://img.shields.io/badge/MOFA2-v1.12.1-orange)](#credits)
 [![License](https://img.shields.io/badge/License-MIT-green)](#license)
 
-**View the complete interactive analysis pipeline: [MOFA2_CLL_Tutorial_Pipeline.html](https://[Fares77-a11y].github.io/Multi-Omics-Factor-Analysis-of-Chronic-Lymphocytic-Leukemia-CLL-/MOFA2_CLL_Tutorial_Pipeline.html)**
+**View the complete interactive analysis pipeline: [MOFA2_CLL_Tutorial_Pipeline.html](https://rawgit.com/[Fares77-a11y]/Multi-Omics-Factor-Analysis-of-Chronic-Lymphocytic-Leukemia-CLL-/main/MOFA2_CLL_Tutorial_Pipeline.html)**
 
 
 ## Project Overview
