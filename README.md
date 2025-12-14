@@ -5,8 +5,7 @@
 [![MOFA2](https://img.shields.io/badge/MOFA2-v1.12.1-orange)](#credits)
 [![License](https://img.shields.io/badge/License-MIT-green)](#license)
 
-**View the complete interactive analysis pipeline: [MOFA2_CLL_Tutorial_Pipeline.html](https://rawgit.com/[Fares77-a11y]/Multi-Omics-Factor-Analysis-of-Chronic-Lymphocytic-Leukemia-CLL-/main/MOFA2_CLL_Tutorial_Pipeline.html)**
-
+**View the complete interactive analysis pipeline: [MOFA2_CLL_Tutorial_Pipeline.html](https://fares77-a11y.github.io/Multi-Omics-Factor-Analysis-of-Chronic-Lymphocytic-Leukemia-CLL-/MOFA2_CLL_Tutorial_Pipeline.html)**
 
 ## Project Overview
 
@@ -48,12 +47,14 @@ Chronic lymphocytic leukemia (CLL) is a **highly heterogeneous B-cell malignancy
 This analysis addresses a fundamental question in precision medicine: **Can we move beyond single biomarkers to understand coordinated molecular changes across multiple cellular layers?**
 
 By integrating:
+
 1. **Genetic layer**: Somatic mutations in driver genes
 2. **Epigenetic layer**: DNA methylation patterns at promoters and enhancers
 3. **Transcriptomic layer**: Gene expression programs reflecting cell state
 4. **Phenotypic layer**: Ex vivo drug sensitivity profiles
 
 We identify **latent biological axes (factors)** that:
+
 - Bridge the central dogma: mutations → epigenetic remodeling → transcriptional changes → drug response
 - Reveal hidden relationships between molecular layers
 - Provide prognostic and predictive signatures for personalized medicine
@@ -68,14 +69,16 @@ We identify **latent biological axes (factors)** that:
 **Result**: Factor 1 shows the **strongest association with IGHV mutation status** and captures variation across **ALL omics modalities simultaneously**.
 
 **Biological Interpretation**:
+
 - U-CLL patients (unmutated IGHV) cluster at negative Factor 1 values
 - M-CLL patients (mutated IGHV) cluster at positive Factor 1 values
 - **Shared factor** (high R² in mRNA, Methylation, Drugs, Mutations) indicates a **global disease-driving axis**
 
 **Biological Mechanisms Captured**:
+
 - **BCR Signaling Activation**: U-CLL cells maintain active B-cell receptor signaling with heightened responsiveness to external stimuli
 - **Metabolic Reprogramming**: Switch from oxidative phosphorylation to glycolysis in more aggressive U-CLL
-- **Epigenetic State Differences**: 
+- **Epigenetic State Differences**:
   - M-CLL: Memory B-cell–like methylation signature (reminiscent of post-germinal center B-cells)
   - U-CLL: Naïve B-cell–like methylation signature (early developmental stage)
 - **Distinct Microenvironmental Interactions**: U-CLL cells show enhanced responsiveness to lymph node signals
@@ -85,15 +88,18 @@ We identify **latent biological axes (factors)** that:
 ### ✅ Finding 2: Factor 3 Is Driven by Trisomy 12 and Predicts Drug Response
 
 **Result**: Factor 3 shows **strong dependency on trisomy 12 status** and captures significant variation in:
+
 - **Mutations view** (highest R²)
 - **mRNA view** (intermediate R²)
 - **Drug view** (revealing drug-response phenotypes)
 
 **Biological Interpretation**:
+
 - Trisomy 12 represents a **chromosomal dosage imbalance** affecting ~500 genes on chromosome 12
 - Overexpression of key regulatory genes alters cellular signaling and metabolic capacity
 
 **Key Genes & Pathways Affected**:
+
 - **Notch Signaling**: NOTCH1 and related genes on chr12 are overexpressed
   - Drives aberrant T-cell–like signaling in B-cells
   - Links to enhanced proliferation and altered differentiation
@@ -103,6 +109,7 @@ We identify **latent biological axes (factors)** that:
   - Affects interactions with microenvironment
 
 **Drug Response Phenotype**:
+
 - Trisomy 12 patients show **distinct sensitivity profiles** across 310 tested compounds
 - Particularly sensitive to **certain targeted therapies** (BTK inhibitors, mTOR inhibitors)
 - Reveals actionable therapeutic vulnerabilities beyond standard chemotherapy
@@ -121,6 +128,7 @@ We identify **latent biological axes (factors)** that:
 | **Q4** | Unmutated | Positive | Very Poor | Highly aggressive, complex molecular landscape |
 
 **Clinical Significance**:
+
 - These 4 subgroups show **distinct survival curves** (not shown but inferred from known IGHV/trisomy12 biology)
 - Enables **personalized monitoring intervals** and **treatment intensification** strategies
 - Provides **biological rationale** for clinical decision-making
@@ -132,6 +140,7 @@ We identify **latent biological axes (factors)** that:
 ### 🔬 Multi-Omics Data Integration
 
 **Data Structure**:
+
 ```
 CLL Cohort (N=200)
 ├── mRNA Expression (5,000 genes)
@@ -145,6 +154,7 @@ CLL Cohort (N=200)
 ```
 
 **Clinical Metadata**:
+
 - IGHV mutation status (mutated/unmutated)
 - Trisomy 12 status (present/absent)
 - Age at diagnosis
@@ -159,32 +169,37 @@ CLL Cohort (N=200)
 The interactive HTML report includes the following analyses:
 
 #### 1. **Factor Structure & Variance Decomposition**
-   - 15 latent factors extracted from integrated data
-   - Factor 1: High R² across all 4 views → Global disease driver
-   - Factor 3: High R² in mutations and drugs → Trisomy 12 signature
 
-#### 2. **Factor-Clinical Associations** 
-   - Factor 1 vs IGHV: Clear separation of mutated vs unmutated patients
-   - Factor 3 vs Trisomy 12: Trisomy 12+ patients at negative Factor 3 values
-   - **Patient Stratification Plot**: 2D scatter (Factor 1 vs Factor 3) colored by IGHV, shaped by trisomy 12
-     - Reveals 4 distinct quadrants with differential clinical outcomes
-     - Demonstrates how MOFA integrates genetic and transcriptomic information into interpretable patient coordinates
+- 15 latent factors extracted from integrated data
+- Factor 1: High R² across all 4 views → Global disease driver
+- Factor 3: High R² in mutations and drugs → Trisomy 12 signature
+
+#### 2. **Factor-Clinical Associations**
+
+- Factor 1 vs IGHV: Clear separation of mutated vs unmutated patients
+- Factor 3 vs Trisomy 12: Trisomy 12+ patients at negative Factor 3 values
+- **Patient Stratification Plot**: 2D scatter (Factor 1 vs Factor 3) colored by IGHV, shaped by trisomy 12
+  - Reveals 4 distinct quadrants with differential clinical outcomes
+  - Demonstrates how MOFA integrates genetic and transcriptomic information into interpretable patient coordinates
 
 #### 3. **Feature Weights & Gene Discovery**
-   - Top genes driving each factor
-   - Mutations most strongly associated with Factors 1 and 3
-   - Drug compounds showing factor-specific sensitivity patterns
+
+- Top genes driving each factor
+- Mutations most strongly associated with Factors 1 and 3
+- Drug compounds showing factor-specific sensitivity patterns
 
 #### 4. **Pathway Enrichment Analysis (Reactome)**
-   - Factor 1 enriches for BCR signaling, cell cycle, proliferation pathways
-   - Factor 3 enriches for Notch signaling, developmental pathways, T-cell signaling
-   - Reveals biological themes driving each latent axis
+
+- Factor 1 enriches for BCR signaling, cell cycle, proliferation pathways
+- Factor 3 enriches for Notch signaling, developmental pathways, T-cell signaling
+- Reveals biological themes driving each latent axis
 
 #### 5. **Integration Logic Visualization**
-   - Demonstrates how genetic lesions (mutations) connect to epigenetic changes (methylation)
-   - Links epigenetic state to transcriptional output (mRNA)
-   - Connects molecular phenotype to drug response sensitivity
-   - **The "causality arrow"**: Mutations → Epigenetics → Transcription → Phenotype
+
+- Demonstrates how genetic lesions (mutations) connect to epigenetic changes (methylation)
+- Links epigenetic state to transcriptional output (mRNA)
+- Connects molecular phenotype to drug response sensitivity
+- **The "causality arrow"**: Mutations → Epigenetics → Transcription → Phenotype
 
 ---
 
@@ -196,7 +211,7 @@ This analysis employs **MOFA+ (Multi-Omics Factor Analysis Plus)**, a probabilis
 
 1. **Decomposes multi-omics variance** into latent factors (LFs)
 2. **Learns view-specific relationships**: Each omics view has its own likelihood (Gaussian for continuous, Bernoulli for binary)
-3. **Identifies shared vs. view-specific variation**: 
+3. **Identifies shared vs. view-specific variation**:
    - Shared factors explain variance across multiple views
    - View-specific factors capture modality-unique biology
 4. **Generates interpretable low-dimensional representations** for downstream applications
@@ -233,7 +248,7 @@ This analysis employs **MOFA+ (Multi-Omics Factor Analysis Plus)**, a probabilis
 
 ### Bioinformatics & Data Science
 
-- **Handling bulk multi-omics data**: 
+- **Handling bulk multi-omics data**:
   - RNA-seq normalization and QC
   - Methylation array preprocessing (Illumina)
   - Mutation calling and annotation
@@ -280,11 +295,13 @@ mofa2-cll-multiomics/
 ### 🚀 View the Analysis
 
 **Option 1: Interactive HTML Report (Recommended)**
+
 1. Download or clone this repository
 2. Open `MOFA2_CLL_Tutorial_Pipeline.html` in any web browser
 3. Explore all analyses, visualizations, and code chunks interactively
 
 **Option 2: Run the Analysis Yourself**
+
 1. Follow setup instructions in `SETUP.md`
 2. Open `MOFA2_CLL_Analysis.Rmd` in RStudio
 3. Run chunks sequentially or knit to HTML
@@ -297,16 +314,19 @@ mofa2-cll-multiomics/
 This project is explicitly built on the excellent foundation provided by:
 
 ### Original MOFA2 Framework & Tutorials
+
 - **Argelaguet, R., Velten, B., Arnol, D., et al.** (2018). "Multi-Omics Factor Analysis—a framework for unsupervised integration of multi-omics data sets." *Molecular Systems Biology*, 14(6), e8124. DOI: [10.15252/msb.20178124](https://doi.org/10.15252/msb.20178124)
 - **Argelaguet, R., Arnol, D., Bredikhin, D., et al.** (2020). "MOFA+: a statistical framework for comprehensive integration of multi-modal single-cell data." *Genome Biology*, 21(1), 111. DOI: [10.1186/s13059-020-02015-1](https://doi.org/10.1186/s13059-020-02015-1)
 
 ### Key Developers & Lab Leadership
+
 - **Ricard Argelaguet** (MOFA lead developer, EMBL-EBI)
 - **Britta Velten** (MOFA+ and MEFISTO developer, DKFZ)
 - **Oliver Stegle** (Principal Investigator, EMBL-EBI & DKFZ)
 - **The bioFAM team** for maintaining excellent documentation, tutorials, and data packages
 
 ### CLL Biology & Multi-Omics Data
+
 - **Dietrich, S., Oleś, M., Lu, J., et al.** (2018). "Drug-perturbation-based stratification of blood cancer." *Journal of Clinical Investigation*, 128(1), 427-445. DOI: [10.1172/JCI93801](https://doi.org/10.1172/JCI93801)
   - Original CLL drug response screening and multi-omics profiling
 - **TCGA/ICGC consortia** for public CLL genomics resources
@@ -324,6 +344,7 @@ This is a **self-taught portfolio project** designed to demonstrate:
 4. **Methodological Rigor**: Proper statistical frameworks, QC, reproducibility, and validation
 
 **For academic/career purposes**, this repository demonstrates:
+
 - Readiness for **PhD-level quantitative biology** (computational biology, systems medicine)
 - Proficiency in **bioinformatics tools** and **statistical methods**
 - **Subject-matter expertise** in cancer genomics and hematologic malignancies
@@ -347,6 +368,7 @@ The following analyses could extend this project:
 ### Reusability as a Template
 
 This workflow is **fully generalizable** to other multi-omics cohorts:
+
 - Adapt data loading and preprocessing for your dataset
 - Adjust MOFA model parameters (number of factors, likelihoods)
 - Update clinical metadata and biological annotations
@@ -362,6 +384,7 @@ This workflow is **fully generalizable** to other multi-omics cohorts:
 - **Data**: MOFAdata package (Bioconductor, open-source)
 
 **If you reuse or adapt this analysis**, please:
+
 - Cite the original MOFA2 papers
 - Credit the Stegle Lab and Argelaguet et al.
 - Link back to this repository if extending the work
@@ -373,7 +396,7 @@ This workflow is **fully generalizable** to other multi-omics cohorts:
 For questions or suggestions:
 
 - **GitHub Issues**: [Project Issues Page](#) - for code/documentation bugs or feature requests
-- **MOFA2 Official Support**: 
+- **MOFA2 Official Support**:
   - [MOFA2 GitHub](https://github.com/bioFAM/MOFA2)
   - [Bioconductor Support](https://support.bioconductor.org/)
   - [MOFA2 Documentation](https://biofam.github.io/MOFA2/)
@@ -383,17 +406,20 @@ For questions or suggestions:
 ## Key References
 
 ### MOFA2 & Multi-Omics Integration
+
 1. Argelaguet et al. (2018). *MSB* - Original MOFA framework paper
 2. Argelaguet et al. (2020). *Genome Biology* - MOFA+ for single-cell data
 3. Velten et al. (2022). *bioRxiv* - MEFISTO temporal factor analysis
 
 ### CLL Biology & Biomarkers
+
 1. Hamblin et al. (1999). *Blood* - IGHV mutation status prognostic significance
 2. Damle et al. (1999). *Blood* - IGHV and clinical outcomes
 3. Döhner et al. (2000). *NEJM* - Prognostic factors in CLL
 4. Baliakas et al. (2022). *Leukemia* - Complex karyotype and prognostic models
 
 ### Precision Medicine in CLL
+
 1. Dietrich et al. (2018). *J Clin Invest* - Drug perturbation-based stratification
 2. Brown et al. (2014). *Cell* - Multi-omics reveals leukemia diversity
 3. Ramsay et al. (2013). *Nature* - Genomic architecture of lymphoid malignancies
