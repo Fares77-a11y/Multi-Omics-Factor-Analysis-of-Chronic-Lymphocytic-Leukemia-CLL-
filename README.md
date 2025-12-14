@@ -5,7 +5,7 @@
 [![MOFA2](https://img.shields.io/badge/MOFA2-v1.12.1-orange)](#credits)
 [![License](https://img.shields.io/badge/License-MIT-green)](#license)
 
-**View the complete interactive analysis pipeline: [MOFA2_CLL_Tutorial_Pipeline.html](file:///C:/Users/Ibrah/AppData/Local/Microsoft/Windows/INetCache/IE/OEDMNK02/MOFA2_CLL_Tutorial_Pipeline[1].html)**
+**View the complete interactive analysis pipeline: [MOFA2_CLL_Tutorial_Pipeline.html](https://github.com/[your-username]/mofa2-cll-multiomics/blob/main/MOFA2_CLL_Tutorial_Pipeline.html)**
 
 ## Project Overview
 
