@@ -1,0 +1,6 @@
+# Tell GitHub Linguist that HTML is generated output
+*.html linguist-generated=true
+
+# Mark RMD as the primary R code
+*.rmd linguist-language=R
+*.Rmd linguist-language=R
