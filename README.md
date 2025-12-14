@@ -5,7 +5,7 @@
 [![MOFA2](https://img.shields.io/badge/MOFA2-v1.12.1-orange)](#credits)
 [![License](https://img.shields.io/badge/License-MIT-green)](#license)
 
-**View the complete interactive analysis pipeline: [MOFA2_CLL_Tutorial_Pipeline.html](https://fares77-a11y.github.io/Multi-Omics-Factor-Analysis-of-Chronic-Lymphocytic-Leukemia-CLL-/MOFA2_CLL_Tutorial_Pipeline.html)**
+**View the complete interactive analysis pipeline: [MOFA2_CLL_Project_Pipeline.html](https://fares77-a11y.github.io/Multi-Omics-Factor-Analysis-of-Chronic-Lymphocytic-Leukemia-CLL-/MOFA2_CLL_Project_Pipeline.html)**
 
 ## Project Overview
 
@@ -283,7 +283,7 @@ This analysis employs **MOFA+ (Multi-Omics Factor Analysis Plus)**, a probabilis
 
 ```
 mofa2-cll-multiomics/
-├── MOFA2_CLL_Tutorial_Pipeline.html  ← **MAIN DELIVERABLE** (knitted analysis report)
+├── MOFA2_CLL_Project_Pipeline.html  ← **MAIN DELIVERABLE** (knitted analysis report)
 ├── MOFA2_CLL_Analysis.Rmd            ← Source R Markdown file
 ├── README.md                         ← This file
 ├── SETUP.md                          ← Installation & configuration guide
@@ -297,7 +297,7 @@ mofa2-cll-multiomics/
 **Option 1: Interactive HTML Report (Recommended)**
 
 1. Download or clone this repository
-2. Open `MOFA2_CLL_Tutorial_Pipeline.html` in any web browser
+2. Open `MOFA2_CLL_Project_Pipeline.html` in any web browser
 3. Explore all analyses, visualizations, and code chunks interactively
 
 **Option 2: Run the Analysis Yourself**
